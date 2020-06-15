@@ -1,0 +1,17 @@
+# Cloud One Application Security Configs
+TREND_AP_KEY: <key>
+TREND_AP_SECRET: <secret>
+
+# Lambda Function Configs
+REGION: us-west-2
+S3_BUCKET: insecures3-${file(s3bucketid.js):bucketId}
+LAYER: arn:aws:lambda:${self:custom.variables.REGION}:321717822244:layer:CloudOne-ApplicationSecurity-DEV-runtime-python3_6:3
+ROLE: arn:aws:iam::038183297033:role/trend/demo/trend-demo-lambda-s3-role
+
+DB_NAME: insekuredb
+DB_USER: super_insecure
+DB_PASSWORD: ZneaZl4RMSbOYpxR06oE
+DB_HOST:
+  Fn::GetAtt: [Cluster, Endpoint.Address]
+DB_PORT:
+  Fn::GetAtt: [Cluster, Endpoint.Port]

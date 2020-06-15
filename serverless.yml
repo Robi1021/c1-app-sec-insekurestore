@@ -1,0 +1,304 @@
+service: insekure-store
+plugins:
+  - serverless-python-requirements
+  - serverless-plugin-common-layers
+  - serverless-s3-remover
+
+provider:
+  name: aws
+  region: ${self:custom.variables.REGION}
+  stage: dev
+  versionFunctions: false
+  environment: ${self:custom.variables}
+  role: ${self:custom.variables.ROLE}
+  runtime: python3.6
+  layers:
+    - ${self:custom.variables.LAYER}
+
+custom:
+  variables: ${file(./variables.yml)}
+  remover:
+    buckets:
+      - ${self:custom.variables.S3_BUCKET}
+  pythonRequirements:
+    dockerizePip: true
+  vpc:
+    securityGroupIds:
+      - !Ref InsekureSG
+    subnetIds:
+      - !Ref PublicSubnet1
+      - !Ref PrivateSubnet1
+      - !Ref PrivateSubnet2
+
+functions:
+  index:
+    handler: handler.index
+    events:
+      - http:
+          path: '/'
+          method: get
+  static:
+    handler: handler.index
+    events:
+      - http:
+          path: '/{file}'
+          method: get
+          request:
+            parameters:
+              paths:
+                file: true
+  is_valid:
+    handler: handler.is_valid
+    events:
+      - http:
+          path: '/is_valid'
+          method: post
+          cors: true
+  list:
+    handler: handler.list_bucket
+    events:
+      - http:
+          path: '/list'
+          method: get
+          cors: true
+  get_file:
+    runtime: provided
+    handler: handler.get_file
+    events:
+      - http:
+          path: '/get_file'
+          method: get
+          cors: true
+  read_file:
+    runtime: provided
+    handler: handler.read_file
+    events:
+        - http:
+            path: '/read_file'
+            method: get
+            cors: true
+  write_file:
+    runtime: provided
+    handler: handler.write_file
+    events:
+      - http:
+          path: '/write_file'
+          method: post
+          cors: true
+  delete_file:
+    handler: handler.delete_file
+    events:
+      - http:
+          path: '/delete_file'
+          method: post
+          cors: true
+  auth:
+    runtime: provided
+    timeout: 30
+    vpc: ${self:custom.vpc}
+    handler: handler.do_auth
+    events:
+      - http:
+          path: '/auth'
+          method: post
+          cors: true
+  db:
+    timeout: 30
+    vpc: ${self:custom.vpc}
+    handler: app.db.migrate
+
+package:
+  exclude:
+    - node_modules/**
+    - venv/**
+    - .tox/**
+  include:
+    - static/**
+
+resources:
+  Description: "InSekureStore is an intentionally vulnerable serverless application."
+  Resources:
+    StorageBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.variables.S3_BUCKET}
+        AccessControl: PublicReadWrite
+        # Set the CORS policy
+        CorsConfiguration:
+          CorsRules:
+            -
+              AllowedOrigins:
+                - '*'
+              AllowedHeaders:
+                - '*'
+              AllowedMethods:
+                - GET
+                - PUT
+                - POST
+                - DELETE
+                - HEAD
+              MaxAge: 3000
+    # VPC containing 3 subnets, 1 is public, 2 are private for RDS
+    # Contains IGW that provides internet access to lambda functions
+    InsekureVPC:
+      Type: AWS::EC2::VPC
+      Properties:
+          CidrBlock: 10.0.0.0/16
+          EnableDnsSupport: 'true'
+          EnableDnsHostnames: 'true'
+          InstanceTenancy: 'default'
+          Tags:
+            - Key: Name
+              Value: insekure-vpc
+    
+    PublicSubnet1:
+      Type: AWS::EC2::Subnet
+      Properties:
+        VpcId: !Ref InsekureVPC
+        CidrBlock: 10.0.1.0/24
+        AvailabilityZone: !Select [0, !GetAZs '']
+        Tags:
+          - Key: Name
+            Value: insekure-public-subnet-1
+
+    PrivateSubnet1:
+      Type: AWS::EC2::Subnet
+      Properties:
+        VpcId: !Ref InsekureVPC
+        CidrBlock: 10.0.16.0/24
+        AvailabilityZone: !Select [0, !GetAZs '']
+        Tags:
+          - Key: Name
+            Value: insekure-private-subnet-1
+
+    PrivateSubnet2:
+      Type: AWS::EC2::Subnet
+      Properties:
+        VpcId: !Ref InsekureVPC
+        CidrBlock: 10.0.32.0/24
+        AvailabilityZone: !Select [1, !GetAZs '']
+        Tags:
+          - Key: Name
+            Value: insekure-private-subnet-2
+
+    # Internet GW + NAT
+    InternetGateway:
+      Type: AWS::EC2::InternetGateway
+      Properties:
+        Tags:
+        - Key: Name
+          Value: insekure-igw
+
+    AttachGateway:
+      Type: "AWS::EC2::VPCGatewayAttachment"
+      Properties: 
+        InternetGatewayId: !Ref InternetGateway
+        VpcId: !Ref InsekureVPC
+
+    ElasticIP:
+      Type: AWS::EC2::EIP
+      Properties:
+        Domain: vpc
+
+    NatGateway:
+      Type: AWS::EC2::NatGateway
+      Properties:
+        AllocationId: !GetAtt ElasticIP.AllocationId
+        SubnetId: !Ref PublicSubnet1
+
+    # Private routing table that connects the private subnets to the NAT
+    PrivateRouteTable:
+      Type: AWS::EC2::RouteTable
+      Properties:
+        VpcId: !Ref InsekureVPC
+        Tags:
+          - Key: Name
+            Value: rt-to-nat"
+
+    DefaultPrivateRoute:
+      Type: AWS::EC2::Route
+      Properties:
+        RouteTableId: !Ref PrivateRouteTable
+        DestinationCidrBlock: 0.0.0.0/0
+        NatGatewayId: !Ref NatGateway
+
+    Private1RouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        RouteTableId: !Ref PrivateRouteTable
+        SubnetId: !Ref PrivateSubnet1
+
+    Private2RouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        RouteTableId: !Ref PrivateRouteTable
+        SubnetId: !Ref PrivateSubnet2
+
+    # Public routing table that connects the public subnet to the IGW
+    PublicRouteTable:
+      Type: AWS::EC2::RouteTable
+      Properties:
+        VpcId: !Ref InsekureVPC
+        Tags:
+          - Key: Name
+            Value: rt-to-igw
+
+    DefaultPublicRoute:
+      Type: AWS::EC2::Route
+      Properties:
+        RouteTableId: !Ref PublicRouteTable
+        DestinationCidrBlock: 0.0.0.0/0
+        GatewayId: !Ref InternetGateway
+
+    Public1RouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        RouteTableId: !Ref PublicRouteTable
+        SubnetId: !Ref PublicSubnet1
+
+    # Security Group for InsekureStore
+    InsekureSG:
+      Type: AWS::EC2::SecurityGroup
+      Properties: 
+        GroupName: insekure-sg
+        GroupDescription: Allow https and mysql
+        VpcId: !Ref InsekureVPC
+        SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '443'
+          ToPort: '443'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '3306'
+          ToPort: '3306'
+          CidrIp: 0.0.0.0/0
+        Tags:
+          - Key: Name
+            Value: Insekure Security Group
+
+    DBSubnetGroup:
+      Type: AWS::RDS::DBSubnetGroup
+      Properties:
+        DBSubnetGroupDescription: DB Private Subnets
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+
+    Cluster:
+      Type: AWS::RDS::DBCluster
+      Properties:
+        Engine: aurora
+        EngineMode: serverless
+        DatabaseName: ${self:custom.variables.DB_NAME}
+        MasterUsername: ${self:custom.variables.DB_USER}
+        MasterUserPassword: ${self:custom.variables.DB_PASSWORD}
+        DBSubnetGroupName: !Ref DBSubnetGroup
+        ScalingConfiguration:
+          AutoPause: true
+          MaxCapacity: 2
+          MinCapacity: 1
+          SecondsUntilAutoPause: 1800 # 30 min
+        VpcSecurityGroupIds:
+          - Fn::GetAtt:
+            - InsekureSG
+            - GroupId
