@@ -3,9 +3,9 @@ TREND_AP_KEY: <key>
 TREND_AP_SECRET: <secret>
 
 # Lambda Function Configs
-REGION: us-west-2
+REGION: eu-west-1
 S3_BUCKET: insecures3-${file(s3bucketid.js):bucketId}
-LAYER: arn:aws:lambda:${self:custom.variables.REGION}:321717822244:layer:CloudOne-ApplicationSecurity-DEV-runtime-python3_6:3
+LAYER: arn:aws:lambda:${self:custom.variables.REGION}:800880067056:layer:CloudOne-ApplicationSecurity-runtime-python3_6:4
 ROLE: arn:aws:iam::038183297033:role/trend/demo/trend-demo-lambda-s3-role
 
 DB_NAME: insekuredb
