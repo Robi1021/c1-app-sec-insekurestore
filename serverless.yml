@@ -103,7 +103,7 @@ functions:
           method: post
           cors: true
   db:
-    timeout: 30
+    timeout: 90
     vpc: ${self:custom.vpc}
     handler: app.db.migrate
 
@@ -213,7 +213,8 @@ resources:
         VpcId: !Ref InsekureVPC
         Tags:
           - Key: Name
-            Value: rt-to-nat"
+            Value: rt-to-nat
+            # Value: rt-to-nat"
 
     DefaultPrivateRoute:
       Type: AWS::EC2::Route
