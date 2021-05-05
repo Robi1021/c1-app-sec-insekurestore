@@ -94,7 +94,7 @@ functions:
           cors: true
   auth:
     runtime: provided
-    timeout: 30
+    timeout: 40
     vpc: ${self:custom.vpc}
     handler: handler.do_auth
     events:
