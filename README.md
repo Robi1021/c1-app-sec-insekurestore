@@ -1,90 +1,124 @@
-# c1-app-sec-insekurestore
+# Cloud One Application Security with InSekureStore
+
+- [Cloud One Application Security with InSekureStore](#cloud-one-application-security-with-insekurestore)
+  - [Install Node](#install-node)
+  - [Update IAM Settings for the Workspace](#update-iam-settings-for-the-workspace)
+  - [Install Serverless](#install-serverless)
+  - [Role and User](#role-and-user)
+    - [Create serverless AWS user](#create-serverless-aws-user)
+    - [Create a Role for Lambda, S3, RDS](#create-a-role-for-lambda-s3-rds)
+  - [Deploy the Serverless InSekureStore](#deploy-the-serverless-insekurestore)
+    - [Get the sources](#get-the-sources)
+    - [Configure](#configure)
+    - [Deploy](#deploy)
+    - [Upload Some Files](#upload-some-files)
+    - [Access the Serverless Application](#access-the-serverless-application)
+    - [Remove the InSekureStore](#remove-the-insekurestore)
+  - [Cloud One Application Security Configuration](#cloud-one-application-security-configuration)
+    - [Protection Policy](#protection-policy)
+    - [SQL Injection Policy Configuration](#sql-injection-policy-configuration)
+    - [Illegal File Access Policy Configuration](#illegal-file-access-policy-configuration)
+    - [Remote Command Execution Policy Configuration](#remote-command-execution-policy-configuration)
+  - [InSekureStore - Attacks](#insekurestore---attacks)
+    - [SQL Injection](#sql-injection)
+    - [Directory Traversal](#directory-traversal)
+    - [Remote Command Execution](#remote-command-execution)
+  - [Support](#support)
+  - [Contribute](#contribute)
+
 The app is to be deployed by `serverless`.
 
-## Serverless
-### Prerequisites
-**Install Node**
-```shell
-curl -sL https://deb.nodesource.com/setup_13.x | sudo -E bash -
+## Install Node
+
+```sh
+curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash -
 sudo apt-get install -y nodejs
-node --version
 ```
+
+If you get the error `E: Cloud not get lock /var/lib/dpkg frontend lock...` you need to wait 2 to 3 minutes for the background task to complete. Simply retry the `apt-get install`. Then check the node version with
+
+```sh
+nodejs --version
 ```
-v13.11.0
+
+```text
+v14.16.1
 ```
-**Install AWS cli**
-```shell
-sudo apt install -y awscli
-aws configure
+
+## Update IAM Settings for the Workspace
+
+- Click the gear icon (in top right corner), or click to open a new tab and choose “Open Preferences”
+- Select AWS SETTINGS
+- Turn off AWS managed temporary credentials
+- Close the Preferences tab
+
+Install AWS CLI.
+
+```sh
+# sudo apt install -y awscli
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
 ```
-**Install Serverless**
-```shell
-sudo npm install -g serverless
+
+## Install Serverless
+
+```sh
+npm install -g serverless
 serverless --version
 ```
+
+```text
+Framework Core: 2.37.0
+Plugin: 4.5.3
+SDK: 4.2.2
+Components: 3.9.0
 ```
-Framework Core: 1.67.0
-Plugin: 3.6.0
-SDK: 2.3.0
-Components: 2.22.3
-```
-Now, at least install the python requirements for serverless.
-```shell
-sudo serverless plugin install --name serverless-python-requirements
-```
-**Next, create a serverless AWS user**
+
+## Role and User
+
+### Create serverless AWS user
 
 Services in AWS, such as AWS Lambda, require that you provide credentials when you access them to ensure that you have permission to access the resources owned by that service. To accomplish this AWS recommends that you use AWS Identity and Access Management (IAM).
 
 1. Login to your AWS account and go to the Identity & Access Management (IAM) page.
+2. Follow this deep link to create the serverless AWS user: <https://console.aws.amazon.com/iam/home?#/users$new?step=review&accessKey&userNames=serverless-admin&groups=Administrators>
+3. Confirm that Group `Administrators` is listed, then click `Create user` to view permissions.
+4. View and copy the API Key & Secret to a temporary place. You'll need it in the next step.
 
-2. Click on Users and then Add user. Enter a name in the first field to remind you this User is related to the Serverless Framework, like serverless-admin. Enable Programmatic access by clicking the checkbox. Click Next to go through to the Permissions page. Click on Attach existing policies directly. Search for and select `AdministratorAccess` then click Next: Review. Check to make sure everything looks good and click Create user.
+### Create a Role for Lambda, S3, RDS
 
-3. View and copy the API Key & Secret to a temporary place. You'll need it in the next step.
+1. Create a role by following this deep link: <https://console.aws.amazon.com/iam/home?#/roles$new?step=review&commonUseCase=Lambda%2BLambda&selectedUseCase=Lambda&policies=arn:aws:iam::aws:policy%2FAmazonS3FullAccess&policies=arn:aws:iam::aws:policy%2FAWSLambdaFullAccess&policies=arn:aws:iam::aws:policy%2FAmazonEC2FullAccess&policies=arn:aws:iam::aws:policy%2FAmazonRDSFullAccess>
+2. Without chaning anything, press `Next: Permissions`, `Next: Tags`, `Next: Review`.
+3. Set the Role name to `serverless-lambda-s3-role`, Press `Create` and note the ARN.
 
-**Configure Serverless**
+## Deploy the Serverless InSekureStore
 
-Either
-```shell
-export AWS_ACCESS_KEY_ID=<your-key-here>
-export AWS_SECRET_ACCESS_KEY=<your-secret-key-here>
+### Get the sources
+
+Do a git clone:
+
+```sh
+git clone https://github.com/mawinkler/c1-app-sec-insekurestore.git
+cd c1-app-sec-insekurestore
 ```
-Or
-```shell
-serverless config credentials --provider aws --key <your-key-here> --secret <your-secret-key-here>
-```
-Or
-```shell
-aws configure
-```
-I use the last variant.
 
-**Create a Role for Lambda, S3, RDS**
-
-Create a role with the following permissions:
-```
-AmazonS3FullAccess
-AWSLambdaFullAccess
-AmazonEC2FullAccess
-AmazonRDSFullAccess
-```
-and name it `trend-demo-lambda-s3-role`. Remember the ARN.
-
-## Deploy c1-app-sec-insekurestore
 There is a `serverless.yml` and a `variables.yml`.
 The `variables.yml` is included by the `serverless.yml` via a
-```
+
+```yaml
 custom:
   variables: ${file(./variables.yml)}
 ```
+
 No changes required in `serverless.yml`, a few within `variables.yml`
 
-**Modify the `variables.yml`**
-```shell
-vi variables.yml
-```
-Set your Application Security key and secret, region and role.
-```
+### Configure
+
+Open the `variables.yml` in the Cloud9 editor and set your Application Security key and secret, region and role.
+We're using a python3_6 layer with our custom runtime for this app.
+
+```yaml
 # Cloud One Application Security Configs
 TREND_AP_KEY: <your-ap-key-here>
 TREND_AP_SECRET: <your-secret-key-here>
@@ -92,36 +126,60 @@ TREND_AP_READY_TIMEOUT: 30
 
 # Lambda Function Configs
 REGION: <your-region-here>
-S3_BUCKET: insecures3-${file(s3bucketid.js):bucketId}
-LAYER: arn:aws:lambda:${self:custom.variables.REGION}:321717822244:layer:DS-AppProtect-DEV-python3_6:11
+S3_BUCKET: insekures3-${file(s3bucketid.js):bucketId}
+LAYER: arn:aws:lambda:${self:custom.variables.REGION}:800880067056:layer:CloudOne-ApplicationSecurity-runtime-python3_6:4
 ROLE: <your-just-created-role-arn-here>
 ```
 
-**Deploy**
-```shell
-sls -v deploy --stage dev --aws-profile default
-sls invoke -f db -l --aws-profile default
+### Deploy
+
+Install the python requirements for serverless and ignore the warnings.
+
+```sh
+serverless plugin install --name serverless-python-requirements
 ```
+
+Configure serverless AWS provider credentials
+
+```sh
+export AWS_KEY=<API KEY OF SERVERLESS USER CREATED ABOVE>
+export AWS_SECRET=<API SECRET KEY OF SERVERLESS USER CREATED ABOVE>
+
+serverless config credentials \
+  --provider aws \
+  --key ${AWS_KEY} \
+  --secret ${AWS_SECRET} \
+  -o
+```
+
+And deploy
+
+```sh
+serverless deploy
+```
+
 If everything is successful you will get a link to your lambda driven web application.
-```
+
+```text
+...
 Service Information
 service: insekure-store
 stage: dev
 region: eu-central-1
 stack: insekure-store-dev
-resources: 76
+resources: 75
 api keys:
   None
 endpoints:
-  GET - https://3ovy8p00n9.execute-api.eu-central-1.amazonaws.com/dev/
-  GET - https://3ovy8p00n9.execute-api.eu-central-1.amazonaws.com/dev/{file}
-  POST - https://3ovy8p00n9.execute-api.eu-central-1.amazonaws.com/dev/is_valid
-  GET - https://3ovy8p00n9.execute-api.eu-central-1.amazonaws.com/dev/list
-  GET - https://3ovy8p00n9.execute-api.eu-central-1.amazonaws.com/dev/get_file
-  GET - https://3ovy8p00n9.execute-api.eu-central-1.amazonaws.com/dev/read_file
-  POST - https://3ovy8p00n9.execute-api.eu-central-1.amazonaws.com/dev/write_file
-  POST - https://3ovy8p00n9.execute-api.eu-central-1.amazonaws.com/dev/delete_file
-  POST - https://3ovy8p00n9.execute-api.eu-central-1.amazonaws.com/dev/auth
+  GET - https://ocwnfvuhg9.execute-api.eu-central-1.amazonaws.com/dev/
+  GET - https://ocwnfvuhg9.execute-api.eu-central-1.amazonaws.com/dev/{file}
+  POST - https://ocwnfvuhg9.execute-api.eu-central-1.amazonaws.com/dev/is_valid
+  GET - https://ocwnfvuhg9.execute-api.eu-central-1.amazonaws.com/dev/list
+  GET - https://ocwnfvuhg9.execute-api.eu-central-1.amazonaws.com/dev/get_file
+  GET - https://ocwnfvuhg9.execute-api.eu-central-1.amazonaws.com/dev/read_file
+  POST - https://ocwnfvuhg9.execute-api.eu-central-1.amazonaws.com/dev/write_file
+  POST - https://ocwnfvuhg9.execute-api.eu-central-1.amazonaws.com/dev/delete_file
+  POST - https://ocwnfvuhg9.execute-api.eu-central-1.amazonaws.com/dev/auth
 functions:
   index: insekure-store-dev-index
   static: insekure-store-dev-static
@@ -135,124 +193,127 @@ functions:
   db: insekure-store-dev-db
 layers:
   None
-
-Stack Outputs
-ServiceEndpoint: https://3ovy8p00n9.execute-api.eu-central-1.amazonaws.com/dev
-ServerlessDeploymentBucketName: insekure-store-dev-serverlessdeploymentbucket-dopk8qr47fi2
-
-Serverless: Run the "serverless" command to setup monitoring, troubleshooting and testing.
 ```
+
+Before accessing the app, you need to initialize the database
+
+```sh
+serverless invoke -f db -l
+```
+
+```text
+"DB Migrated Sucessfully"
+```
+
+### Upload Some Files
+
+We're going to upload sample files to the stores bucket. This is named `insekures3-`SOMETHING with `Public` access.
+
+```sh
+export STORE_BUCKET=$(aws s3 ls | sed -n 's/.*\(insekures3.*\)/\1/p')
+for f in kubernetes.* ; do aws s3 cp $f s3://${STORE_BUCKET}/$f ; done
+```
+
+### Access the Serverless Application
+
+You get the URL from the output above, ServiceEndpoint.
+
 Default Credentials
-```
+
+```text
 User: admin
 Pass: admin
 ```
 
-## Demo Cloud1 Application Security
+The first authentication can likely fail, since the database cluster might not be ready or in running state. This will happen always when you're going to use the app later on, since for cost saving reasons, the cluster suspends automatically after 90 minutes. Additionally, our Application Security layers need to be loaded. So if you're going to use this application for customer demos, play with it a little before the demo.
+
+### Remove the InSekureStore
+
+```sh
+serverless remove
+sls remove --aws-profile default
+```
+
+## Cloud One Application Security Configuration
+
 ### Protection Policy
+
 Enable all policies in your group configuration. When you start playing with the app, maybe have them in `Report` mode and switch later to `Block`.
 
 ### SQL Injection Policy Configuration
+
 Turn on all controls
 
 ### Illegal File Access Policy Configuration
-Leave everything turned on
+
+Leave everythin turned on
 
 ### Remote Command Execution Policy Configuration
+
 Add the following rule on top of the preconfigured one:
-```
+
+```text
 file "/tmp/*.*" -b              <-- Allow
 .*                              <-- Block
 ```
 
-### Open Redirect Policy Configuration
+## InSekureStore - Attacks
 
-
-## Attacks
 ### SQL Injection
+
 At the login screen
+
+```text
+E-Mail: admin
 ```
-E-Mail: 1'or'1'='1
-```
-```
-Password: <any>
+
+```text
+Password: 1'or'1'='1
 ```
 
 *Application Security Protection by `SQL Injection - Always True`*
 
 ### Directory Traversal
+
 URL
-```
+
+```text
 ...dev#/browser?view=../../../etc/passwd
 ```
 
-*Application Security Protection by `Malicious Payload`*
-
-### Shellshock
-Open a terminal window and paste in the following (ShellShock) exploit:
-```
-curl -H "User-Agent: () { :; }; /bin/eject" <ServiceEndpoint>
-```
-
-*Application Security Protection by `Malicious Payload`*
-
-### Illegal File Access
-Click on any uploaded file in edit mode and replace the name with
-```
-evil.py
-```
-Click `save`. That will create a new file in the app.
-
-*Application Security Protection by `Illegal File Access`*
-
 ### Remote Command Execution
+
 Go to `Mime Type Params` and change to
-```
+
+```text
 -b && whoami
 ```
+
 or
-```
+
+```text
 -b && uname -a
 ```
+
 Within the details of a text file you will see the output of your command.
 
-*Application Security Protection by `Remote Command Execution`*
+*Application Security Protection by `Remote Command Execution` or `Malicious Payload`*
 
-### Open Redirect
-Redirect hooks work at framework level. This demo app is not built using a framework like most lambda application and hence we do not have a framework API to hook.
+## Support
 
-*Application Security Protection by `Open Redirect`*
+This is an Open Source community project. Project contributors may be able to help, depending on their time and availability. Please be specific about what you're trying to do, your system, and steps to reproduce the problem.
 
-### Malicious File Upload
-The file upload is from browser to s3 bucket. The contents of the file never reaches the lambda function. The lambda function only provides signed urls to the browser for direct uploads. Therefore the current functionality of Application Security does not work here.
-We will have file access protection for such AWS APIs in future.
+For bug reports or feature requests, please [open an issue](../../issues). You are welcome to [contribute](#contribute).
 
-*Application Security Protection by `Malicious File Upload`*
+Official support from Trend Micro is not available. Individual contributors may be Trend Micro employees, but are not official support.
 
-## Additional Info
-### Lambda Layers for Application Security
-One of the Lambda layers will be selected according to your region:
-```
-Python3.6 Lambda Layers:
-arn:aws:lambda:eu-north-1:321717822244:layer:DS-AppProtect-DEV-python3_6:12
-arn:aws:lambda:ap-south-1:321717822244:layer:DS-AppProtect-DEV-python3_6:11
-arn:aws:lambda:eu-west-3:321717822244:layer:DS-AppProtect-DEV-python3_6:11
-arn:aws:lambda:eu-west-2:321717822244:layer:DS-AppProtect-DEV-python3_6:11
-arn:aws:lambda:eu-west-1:321717822244:layer:DS-AppProtect-DEV-python3_6:11
-arn:aws:lambda:ap-northeast-2:321717822244:layer:DS-AppProtect-DEV-python3_6:11
-arn:aws:lambda:ap-northeast-1:321717822244:layer:DS-AppProtect-DEV-python3_6:11
-arn:aws:lambda:sa-east-1:321717822244:layer:DS-AppProtect-DEV-python3_6:11
-arn:aws:lambda:ca-central-1:321717822244:layer:DS-AppProtect-DEV-python3_6:11
-arn:aws:lambda:ap-southeast-1:321717822244:layer:DS-AppProtect-DEV-python3_6:11
-arn:aws:lambda:ap-southeast-2:321717822244:layer:DS-AppProtect-DEV-python3_6:11
-arn:aws:lambda:eu-central-1:321717822244:layer:DS-AppProtect-DEV-python3_6:11
-arn:aws:lambda:us-east-1:321717822244:layer:DS-AppProtect-DEV-python3_6:11
-arn:aws:lambda:us-east-2:321717822244:layer:DS-AppProtect-DEV-python3_6:11
-arn:aws:lambda:us-west-1:321717822244:layer:DS-AppProtect-DEV-python3_6:11
-arn:aws:lambda:us-west-2:321717822244:layer:DS-AppProtect-DEV-python3_6:11
-```
+## Contribute
 
-### Remove
-```shell
-sls remove --aws-profile default
-```
+I do accept contributions from the community. To submit changes:
+
+1. Fork this repository.
+1. Create a new feature branch.
+1. Make your changes.
+1. Submit a pull request with an explanation of your changes or additions.
+
+I will review and work with you to release the code.
