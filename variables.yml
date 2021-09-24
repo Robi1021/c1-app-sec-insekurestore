@@ -1,6 +1,9 @@
 # Cloud One Application Security Configs
 TREND_AP_KEY: <key>
 TREND_AP_SECRET: <secret>
+AWS_LAMBDA_EXEC_WRAPPER: /opt/trend_app_protect
+
+# Optional
 TREND_AP_READY_TIMEOUT: 30
 TREND_AP_TRANSACTION_FINISH_TIMEOUT: 10
 TREND_AP_MIN_REPORT_SIZE: 1
@@ -9,12 +12,13 @@ TREND_AP_MAX_DELAY_MS: 100
 TREND_AP_HTTP_TIMEOUT: 5
 TREND_AP_PREFORK_MODE: True
 TREND_AP_CACHE_DIR: /tmp/trend_cache
-TREND_AP_LOG_FILE: STDERR
+TREND_AP_LOG_FILE: INFO
 
 # Lambda Function Configs
 REGION: <region>
 S3_BUCKET: insekures3-${file(s3bucketid.js):bucketId}
-LAYER: arn:aws:lambda:${self:custom.variables.REGION}:800880067056:layer:CloudOne-ApplicationSecurity-runtime-python3_6:4
+#LAYER: arn:aws:lambda:${self:custom.variables.REGION}:800880067056:layer:CloudOne-ApplicationSecurity-runtime-python3_6:4
+LAYER: arn:aws:lambda:${self:custom.variables.REGION}:800880067056:layer:CloudOne-ApplicationSecurity-python:1
 ROLE: <role-arn>
 
 DB_NAME: insekuredb

@@ -12,7 +12,7 @@ def read(file_name, aws):
 
 def get_download_url(file_name, options, aws):
     aws.download_file(file_name)
-    cmd = 'file "/tmp/{}" {}'.format(file_name, options)
+    cmd = 'ls -l "/tmp/{}" {}'.format(file_name, options)
     mime = subprocess.check_output(
         cmd,
         shell=True).decode('utf-8', errors='ignore')

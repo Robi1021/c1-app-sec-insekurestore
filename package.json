@@ -5,7 +5,9 @@
     "dependencies": {
         "serverless": "^1.55.1",
         "serverless-plugin-common-layers": "^1.0.0",
-        "serverless-python-requirements": "^5.0.0",
         "serverless-s3-remover": "^0.6.0"
+    },
+    "devDependencies": {
+        "serverless-python-requirements": "^5.1.1"
     }
 }
