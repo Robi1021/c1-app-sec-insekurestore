@@ -120,15 +120,28 @@ We're using a python3_6 layer with our custom runtime for this app.
 
 ```yaml
 # Cloud One Application Security Configs
-TREND_AP_KEY: <your-ap-key-here>
-TREND_AP_SECRET: <your-secret-key-here>
+TREND_AP_KEY: <key>
+TREND_AP_SECRET: <secret>
+AWS_LAMBDA_EXEC_WRAPPER: /opt/trend_app_protect
+
+# Optional
+# See: https://cloudone.trendmicro.com/docs/application-security/environment-variables/
 TREND_AP_READY_TIMEOUT: 30
+TREND_AP_TRANSACTION_FINISH_TIMEOUT: 10
+TREND_AP_MIN_REPORT_SIZE: 1
+TREND_AP_INITIAL_DELAY_MS: 1
+TREND_AP_MAX_DELAY_MS: 100
+TREND_AP_HTTP_TIMEOUT: 5
+TREND_AP_PREFORK_MODE: True
+TREND_AP_CACHE_DIR: /tmp/trend_cache
+TREND_AP_LOG_FILE: INFO
 
 # Lambda Function Configs
-REGION: <your-region-here>
+REGION: <region>
 S3_BUCKET: insekures3-${file(s3bucketid.js):bucketId}
-LAYER: arn:aws:lambda:${self:custom.variables.REGION}:800880067056:layer:CloudOne-ApplicationSecurity-runtime-python3_6:4
-ROLE: <your-just-created-role-arn-here>
+LAYER: arn:aws:lambda:${self:custom.variables.REGION}:800880067056:layer:CloudOne-ApplicationSecurity-python:1
+ROLE: <role-arn>
+...
 ```
 
 ### Deploy
@@ -253,7 +266,7 @@ Leave everythin turned on
 Add the following rule on top of the preconfigured one:
 
 ```text
-file "/tmp/*.*" -b              <-- Allow
+ls -l "/tmp/*.*" -b              <-- Allow
 .*                              <-- Block
 ```
 
