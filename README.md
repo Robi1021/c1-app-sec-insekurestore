@@ -115,17 +115,19 @@ No changes required in `serverless.yml`, a few within `variables.yml`
 
 ### Configure
 
-Open the `variables.yml` in the Cloud9 editor and set your Application Security key and secret, region and role.
-We're using a python3_6 layer with our custom runtime for this app.
+Open the `variables.yml` in the Cloud9 editor and set your Application Security key and secret, Cloud One region and aws region and role.
 
 ```yaml
 # Cloud One Application Security Configs
+# Your applicytion group credentials
 TREND_AP_KEY: <key>
 TREND_AP_SECRET: <secret>
+# Don't change!
 AWS_LAMBDA_EXEC_WRAPPER: /opt/trend_app_protect
-
-# Optional
-# See: https://cloudone.trendmicro.com/docs/application-security/environment-variables/
+# Your Cloud One Region, e.g.
+# TREND_AP_HELLO_URL: https://agents.trend-us-1.application.cloudone.trendmicro.com/
+TREND_AP_HELLO_URL: https://agents.<region>.application.cloudone.trendmicro.com/
+# Leave the rest
 TREND_AP_READY_TIMEOUT: 30
 TREND_AP_TRANSACTION_FINISH_TIMEOUT: 10
 TREND_AP_MIN_REPORT_SIZE: 1
@@ -134,13 +136,24 @@ TREND_AP_MAX_DELAY_MS: 100
 TREND_AP_HTTP_TIMEOUT: 5
 TREND_AP_PREFORK_MODE: True
 TREND_AP_CACHE_DIR: /tmp/trend_cache
-TREND_AP_LOG_FILE: INFO
 
 # Lambda Function Configs
+# Target Region for the application, e.g.
+# REGION: eu-west-2
 REGION: <region>
 S3_BUCKET: insekures3-${file(s3bucketid.js):bucketId}
 LAYER: arn:aws:lambda:${self:custom.variables.REGION}:800880067056:layer:CloudOne-ApplicationSecurity-python:1
+# The ARN of the role you created above, e.g.
+# ROLE: arn:aws:iam::XXXXXXXXXXXX:role/serverless-lambda-s3-role
 ROLE: <role-arn>
+
+DB_NAME: insekuredb
+DB_USER: super_insekure
+DB_PASSWORD: ZneaZl4RMSbOYpxR06oE
+DB_HOST:
+  Fn::GetAtt: [Cluster, Endpoint.Address]
+DB_PORT:
+  Fn::GetAtt: [Cluster, Endpoint.Port]
 ...
 ```
 
