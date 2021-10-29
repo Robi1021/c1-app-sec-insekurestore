@@ -122,11 +122,10 @@ Open the `variables.yml` in the Cloud9 editor and set your Application Security 
 # Your applicytion group credentials
 TREND_AP_KEY: <key>
 TREND_AP_SECRET: <secret>
+
 # Don't change!
 AWS_LAMBDA_EXEC_WRAPPER: /opt/trend_app_protect
-# Your Cloud One Region, e.g.
-# TREND_AP_HELLO_URL: https://agents.trend-us-1.application.cloudone.trendmicro.com/
-TREND_AP_HELLO_URL: https://agents.<region>.application.cloudone.trendmicro.com/
+
 # Leave the rest
 TREND_AP_READY_TIMEOUT: 30
 TREND_AP_TRANSACTION_FINISH_TIMEOUT: 10
