@@ -3,7 +3,7 @@
     "description": "An intentionally vulnerable serverless application",
     "version": "0.1.0",
     "dependencies": {
-        "serverless": "^1.55.1",
+        "serverless": "^1.83.3",
         "serverless-plugin-common-layers": "^1.0.0",
         "serverless-s3-remover": "^0.6.0"
     },
